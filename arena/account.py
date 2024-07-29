@@ -9,10 +9,13 @@ class Account(c.Module):
                   user=None, 
                   metadata=None, 
                   signature_staleness=10, 
-                  max_staleness=10000):
+                  max_staleness=10000, 
+                   **extra_metadata,
+                  ):
         self.set_account(password=password, user=user, metadata=metadata)
         self.max_staleness = max_staleness
         self.signature_staleness = signature_staleness
+        self.extra_metadata = extra_metadata
    
     def set_account(self, password, user=None, metadata=None):
         key = c.pwd2key(password)
@@ -116,7 +119,8 @@ class Account(c.Module):
         return {
             'user': self.user,
             'metadata': self.metadata,
-            'key': self.key.ss58_address
+            'key': self.key.ss58_address,
+            **self.extra_metadata
         }
     
     def public_key(self):
@@ -142,7 +146,25 @@ class Account(c.Module):
         df = df[columns].sort_values(sort_by, ascending=ascending)
         df = df.set_index('time')
         df.sort_index(inplace=True)
-
-        
         return df
     
+    @classmethod
+    def create(cls, password='12345', **kwargs):
+        return cls(password=password, **kwargs).state_dict()
+    
+
+    def add_metadata(self, **metadata):
+        self.metadata = metadata
+        return self.state_dict()
+
+
+    
+    def signin(self):
+        import streamlit as st
+        pwd = st.text_input('pwd', 'fam', type='password')
+        key = c.pwd2key(pwd)
+        self.key = key
+        st.write('Public Address')
+        st.code(key.ss58_address)
+        
+        return self.key
