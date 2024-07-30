@@ -13,11 +13,12 @@ class DontSayIt(c.Module):
             return 1
         return 0
 
-    def play(self, text:str, score_input=True) -> str:
+    def play(self, text:str, score_input=False) -> str:
         if score_input:
             score = self.score(text)
         else:
             text = self.model.forward(text)
+            print(text)
             score = self.score(text)
         return score
     
@@ -27,6 +28,7 @@ class DontSayIt(c.Module):
         assert self.score( ' ') == 0, 'Test failed'
         return {'success': 'DontSayIt tested successfully'}
     
+
 
 
 

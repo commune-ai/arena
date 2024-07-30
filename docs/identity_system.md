@@ -1,0 +1,1 @@
+The id system is based on the sr25519 key pair and the account id is the public key. To increase convenience we mapped any password into its own key. The passwords neednt be saved and allows for easy access to the account. The password is hashed and then used as the seed for the key pair generation. 

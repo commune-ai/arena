@@ -17,45 +17,6 @@ class App(c.Module):
         st.set_page_config(layout="wide")
         self.score_model = c.module(score_module)()
         
-
-    
-    def signin(self):
-        import streamlit as st
-        pwd = st.text_input('pwd', 'fam', type='password')
-        key = c.pwd2key(pwd)
-        self.key = key
-        st.write('Public Address')
-        st.code(key.ss58_address)
-        
-        return self.key
-    
-
-    def get_history(self, address=None, model=None):
-        history_paths = self.get_history_paths(address=address, model=model)
-        history = [self.get_json(fp) for fp in history_paths]
-        return history
-    
-
-    def get_history_paths(self, address=None, model=None):
-        address = address or self.key.ss58_address
-        history_paths = []
-        model_paths = [self.resolve_path(f'history/{model}')] if model else self.ls('history')
-        for model_path in model_paths:
-            user_folder = f'{model_path}/{address}'
-            if not self.exists(user_folder):
-                continue
-            for fp in self.ls(user_folder):
-                history_paths += [fp]
-        return history_paths
-    
-
-
-    def defend_model(self):
-        pass
-
-    def blue_team(self):
-        st.write('## Blue Team')
-
         
     def arena(self):
         # c.load_style()
@@ -101,39 +62,36 @@ class App(c.Module):
                     self.save_result(result)
 
                 with st.status(f"Jailbreak Score ({result['mean']})", expanded=True):
-                    result.pop('response')
-                    result.pop('prompt')
-                    model2score = result['model2score']
-                    # write a plot linear polar plot
-                    scores = list(model2score.values())
-                    models = list(model2score.keys())
-    
+ 
                     # make the bar red if the score is > 0.5 else blue
-                    threshold = 0.5
-                    title = f'Jailbreak Score (mean={result["mean"]} std={result["std"]} n={result["n"]})'
-                    fig = px.bar(x=models, y=scores, labels={'x':'Model', 'y':'Score'}, title=title)
-                    fig.update_traces(marker_color=['red' if score > threshold else 'blue' for score in scores])
-                    # max score is 1
-                    fig.update_yaxes(range=[0, 1])
-                    # do a horizontal line at the threshold (0.5)
-                    fig.add_hline(y=threshold, line_dash="dot", line_color="white")
-                    # label the threshold line
-                    fig.add_annotation(x=0, y=threshold + 0.1, text=f'Threshold ({threshold})', showarrow=False)
-                    st.plotly_chart(fig)    
-                    # black background on the radial plot with transparent background
-                    # rgba that is really night vibes and cyber punk
-                    # paper_bgcolor='rgba(0,256,5,1)'
+                    
 
-                # mak
+
+                    def show_result(result, threshold = 0.5):
+                        result.pop('response')
+                        result.pop('prompt')
+                        model2score = result['model2score']
+                        # write a plot linear polar plot
+                        scores = list(model2score.values())
+                        models = list(model2score.keys())
+    
+                        title = f'Jailbreak Score (mean={result["mean"]} std={result["std"]} n={result["n"]})'
+                        fig = px.bar(x=models, y=scores, labels={'x':'Model', 'y':'Score'}, title=title)
+                        fig.update_traces(marker_color=['red' if score > threshold else 'blue' for score in scores])
+                        # max score is 1
+                        fig.update_yaxes(range=[0, 1])
+                        # do a horizontal line at the threshold (0.5)
+                        fig.add_hline(y=threshold, line_dash="dot", line_color="white")
+                        # label the threshold line
+                        fig.add_annotation(x=0, y=threshold + 0.1, text=f'Threshold ({threshold})', showarrow=False)
+                        st.plotly_chart(fig)    
+                        # black background on the radial plot with transparent background
+                        # rgba that is really night vibes and cyber punk
+                        # paper_bgcolor='rgba(0,256,5,1)'
+                        
         with st.expander('History', expanded=True ):
                 st.write(self.my_history())
 
-    def save_result(self, response):
-        model = response['model']
-        address = response['address']
-        model = model.replace('/', '::')
-        path =  f'history/{model}/{address}/{c.time()}.json'
-        self.put_json(path, response)
 
     def my_history(self, 
                    columns=['time', 'model', 'prompt', 'response', 'score', 'temperature', 'model2score'], 
@@ -213,47 +171,4 @@ class App(c.Module):
         return self.get_text(f'{self.dirpath()}/README.md')
 
 
-    def global_history_paths(self):
-        return self.glob('history/**')
-    
-    def global_history(self):
-        history = []
-        for path in self.global_history_paths():
-            history += [self.get_json(path)]
-        return history
-    
-    def clear_history(self):
-        return [self.rm(path) for path in self.global_history_paths()]
-    
-    def load_style(self):
-        style_path = self.dirpath() + f'/styles/app.css'
-        with open(style_path) as f:
-            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True) 
-
-
-        style_path = self.dirpath() + f'/styles/{self.team}.css'
-        with open(style_path) as f:
-            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True) 
-
-
-    def help(self):
-
-        st.write('''
-                 
-        ## Purpose
-                 
-        This is the attack model section. In this section, you can attack the model by providing a red team prompt and the model will respond with a prediction. 
-        The prediction will be scored by the blue team model and the result will be displayed. The higher the score, the more likely the model is to be jailbroken.
-        
-        ## How to Attack
-        
-        1. Enter a prompt in the text area under the Attack section
-        2. Select a model from the dropdown
-        3. Click the Submit Attack button
-        4. The model will respond with a prediction
-        5. The prediction will be scored by the blue team model. 
-                 
-                 ''')
-
-    
 App.run(__name__)

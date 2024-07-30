@@ -2,9 +2,10 @@
 
 
 
-CONTAINER=commune
+CONTAINER=arena
 SCRIPTS_PATH=./scripts
-
+COMMUNE_REPO=https://github.com/commune-ai/commune.git
+git clone ${COMMUNE_REPO} ./src/commune
 # include the arguments following this
 build:
 	${SCRIPTS_PATH}/build.sh 
@@ -23,19 +24,9 @@ enter:
 	docker exec -it ${CONTAINER} bash
 tests: 
 	docker exec ${CONTAINER} bash -c "pytest commune/tests"
-	
-install_venv:
-	./commune/scripts/install_python_venv.sh
-enter_env: 
-	bash -c "source ./env/bin/activate"
-create_env:
-	python3 -m venv env
-
 chmod_scripts:
 	chmod +x ${SCRIPTS_PATH}/*.sh
 
-app:
-	docker exec ${CONTAINER} c app arena.app
-
-apps:
-	docker exec ${CONTAINER} c app/apps
+install:
+	./scripts/install.sh
+	
