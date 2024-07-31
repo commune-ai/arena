@@ -9,7 +9,6 @@ class Game(c.Module):
                  period = 10,
                  epoch = 10000,
                  password=None):
-        
 
         """
         params:
@@ -180,4 +179,3 @@ class Game(c.Module):
     def forward(self, game):
         return  game['data']['x'] + game['data']['y'] + 1
     
-

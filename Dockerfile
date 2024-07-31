@@ -21,12 +21,10 @@ COPY ./requirements.txt /app/requirements.txt
 COPY ./setup.py /app/setup.py
 COPY ./README.md /app/README.md
 
-# git install commune
-RUN git clone https://github.com/commune-ai/commune.git /app/commune
-RUN pip install -e ./commune
-
 RUN pip install -e ./ 
 # THIS IS FOR THE LOCAL PACKAG
 COPY ./ /app
+# git install commune
+RUN ./scripts/install.sh
 # IMPORT EVERYTHING ELSE
 ENTRYPOINT [ "tail", "-f", "/dev/null"]

@@ -1,6 +1,0 @@
-README.md
-setup.py
-arena.egg-info/PKG-INFO
-arena.egg-info/SOURCES.txt
-arena.egg-info/dependency_links.txt
-arena.egg-info/top_level.txt

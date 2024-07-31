@@ -180,12 +180,3 @@ class Account(c.Module):
     def add_metadata(self, **metadata):
         self.metadata = metadata
         return self.state_dict()
-    
-    def signin(self):
-        import streamlit as st
-        pwd = st.text_input('pwd', 'fam', type='password')
-        key = c.pwd2key(pwd)
-        self.key = key
-        st.write('Public Address')
-        st.code(key.ss58_address)
-        return self.key

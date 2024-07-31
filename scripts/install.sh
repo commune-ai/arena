@@ -8,3 +8,5 @@ if [ ! -d "$REPO_PATH" ]; then
     SRC_PATH=$REPO_PATH/requirements.txt
     pip install -r ${SRC_PATH}
 fi
+
+pip install -e ./
