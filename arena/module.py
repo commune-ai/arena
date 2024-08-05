@@ -55,7 +55,13 @@ class Arena(c.Module):
         
         '''
         is_dir = self.isdir(path)
+        if is_dir:
+            filename_options += [path.split('/')[-1] + '.py']
+        print(filename_options)
         for filename in filename_options:
+
+            
+
             if is_dir:
                 game_path = path + '/' + filename
             else:
