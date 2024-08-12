@@ -33,7 +33,7 @@ class Game(c.Module):
                 time in seconds before the leaderboard expires
             
         """
-        self.account = Account(user=user, password=password)
+        self.account = Account(user=user, password=password, role='owner')
         self.params = params
         self.max_time = max_time
         self.description = description
@@ -41,11 +41,12 @@ class Game(c.Module):
         self.leaderboard_path = leaderboard_path
     init_game = __init__
     def start_game(self):
-        game = {
-            'params': self.params, 
-            'time': c.time(),
-        }
-        game['tickets']  = {'owner': self.account.ticket(game)}
+        game = {}
+        game['params'] = self.params
+        game['description'] = self.description
+        game['max_time'] = self.max_time
+        game['epoch'] = self.epoch
+        game = self.account.sign(game, role = 'owner')
 
         return game
     
@@ -53,7 +54,7 @@ class Game(c.Module):
 
     
     def refresh(self):
-        return [self.rm(path) for path in self.global_history_paths()]
+        return self.rm(self.leaderboard_directory())
 
     def metadata(self):
         return {
@@ -62,7 +63,8 @@ class Game(c.Module):
         }
 
     def create_game_path(self, game):
-        path = self.leaderboard_path + '/' +  game['tickets']['user']['address'] + '/' + str(game['time']) + '.json'
+        
+        path = self.leaderboard_path + '/' +  game['signatures']['user']['address'] + '/' + str(game['timestamp']) + '.json'
         path = self.resolve_path(path)
         return path
     
@@ -87,15 +89,15 @@ class Game(c.Module):
                 expired = self.path2age(path) > self.epoch
                 if expired:
                     self.rm(path)
-                paths.remove(path)
-                c.print(f'path: {path} expired: {expired} --> removing path')
+                    paths.remove(path)
+                    c.print(f'path: {path} expired: {expired} --> removing path')
 
         return paths
 
     def clear_leaderboard(self):
         return self.rm(self.leaderboard_directory())
     
-    def leaderboard(self, columns = ['address', 'time', 'score', 'age']):
+    def leaderboard(self):
         leaderboard = []
         for path in self.paths():
             row = self.get_json(path)
@@ -105,30 +107,27 @@ class Game(c.Module):
         df = c.df(leaderboard)
         if len(leaderboard) == 0:
             return leaderboard
-        return df[columns]
+        return df
     
     
     def submit_game(self, game):
         game = game or self.start_game()
-        current_max_time = c.time() - game['time']
-        assert current_max_time < self.max_time, 'Game expired'
-        game_data = game.copy()
-        tickets = game_data.pop('tickets')
-        # veruft the user and owner signatures
-
-        assert c.verify(game_data, signature=tickets['user']['signature'], address=tickets['user']['address']), str(game_data)
+        game_period = c.time() - game['timestamp']
+        assert game_period < self.max_time, 'Game expired'
+        assert game['signatures']['owner']['address'] == self.account.key.ss58_address
+        assert self.account.verify(game), 'Ticket verification failed'
         # game_data.pop('output', None)
 
         # # verify the owner signature
-        # assert c.verify(game_data, **tickets['owner'])
+        # assert c.verify(game_data, **signatures['owner'])
 
         # add the score to the game
+        game['latency'] = game_period
         game['score'] = self.score(game)
-        game_period = c.time() - game['time']
         assert game_period < self.max_time, 'Game expired'
 
-        new_owner_ticket = self.account.ticket(game)
-        game['tickets']['owner'] = new_owner_ticket
+        game = self.account.sign(game)
+        assert self.account.verify(game)
         # create a ticket 
         path = self.create_game_path(game)
         self.put_json(path, game)
@@ -140,7 +139,7 @@ class Game(c.Module):
         
     def play_game(self, game):
         params = game['params']
-        game['output'] =   params['x'] + params['y'] + 1
+        game['output'] =   params['x'] + params['y'] 
         return game
     forward = play_game
     
@@ -151,9 +150,10 @@ class Game(c.Module):
         # start the game
         game = self.start_game()
         game = self.play_game(game)
+        assert self.account.verify(game), 'Ticket verification failed'
         player = Account(user=user, password=password)
-        
-        game['tickets']['user'] =  player.ticket(game)
+        game =  player.sign(game, role='user')
+        assert player.verify(game), 'Ticket verification failed'
        
         return self.submit_game(game)
     
