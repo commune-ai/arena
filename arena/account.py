@@ -33,24 +33,26 @@ class Account(c.Module):
     
     
     def verify_ticket(self, ticket, max_staleness=10):
-        tickets = ticket.pop('tickets')
+        data = ticket.copy()
+        tickets = data.pop('tickets')
         results = []
-        timestamp = c.jload(ticket)['timestamp']
+        timestamp = ticket['timestamp']
         staleness = c.timestamp() - timestamp
         assert staleness < max_staleness, f'Staleness {staleness} > {max_staleness}'
         for user, ticket in tickets.items():
-            result = c.verify(ticket['data'], signature=ticket['signature'], address=ticket['address'])
+            print(data, 'data')
+            result = c.verify(data, signature=ticket['signature'], address=ticket['address'])
             results += [result]
+        print(results)
         return all(results)
     
 
-    def test_account(self, n=10):
+    def test_account(self, n=10, data={'None': 'None'}):
         results = []
         for i in range(n):
-            ticket = self.ticket()
-            print(ticket)
-            assert self.verify_ticket(ticket), 'Verification failed'
-            results += [{'success': 'Account tested successfully'}]
+            ticket = self.ticket(data)
+            assert self.verify_ticket(ticket), 'Ticket verification failed'
+            results += [{'success': 'Account tested successfully', 'address': ticket['tickets']['billy']['address']}]
         return results
     
 
@@ -65,15 +67,17 @@ class Account(c.Module):
     def public_key(self):
         return self.key.ss58_address
     
-    def ticket(self, data = {'a': 1}, password=None ):
-
+    def ticket(self, data = None ):
+        data = c.copy(data)
+        if data is None:
+            data = {'timestamp': c.time()}
+        if 'timestamp' not in data:
+            data['timestamp'] = c.time()
+        signature = self.key.sign(data).hex()
         ticket = {
                 'address': self.key.ss58_address, 
-                'signature': self.sign(data).hex(),
-                'timestamp': c.timestamp(),
+                'signature': signature,
                 }
-        if isinstance(data, dict):
-            ticket['keys'] = list(data.keys())
         if not 'tickets' in data:
             data['tickets'] = {}
         data['tickets'][self.user] = ticket
