@@ -20,5 +20,6 @@ plotly
 openai
 aiohttp
 communex
+pyyaml
 
 

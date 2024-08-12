@@ -4,7 +4,6 @@ import os
 class Arena(c.Module):
     game_directory= os.path.dirname(__file__) +  '/games'
 
-
     def game_paths(self, game_directory=None):
         game_directory = game_directory or self.game_directory
         paths = self.ls(game_directory)
@@ -30,10 +29,7 @@ class Arena(c.Module):
     
     def games(self):
         return self.game_names()
-        
-
-        
-
+    
     def is_path_game(self, path, filename_options=['game.py']):
         '''
         two options of games, each contain a python file that is a class
@@ -57,7 +53,6 @@ class Arena(c.Module):
         is_dir = self.isdir(path)
         if is_dir:
             filename_options += [path.split('/')[-1] + '.py']
-        print(filename_options)
         for filename in filename_options:
 
             
@@ -71,6 +66,4 @@ class Arena(c.Module):
 
         return False
 
-        
-    
 

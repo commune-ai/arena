@@ -1,22 +1,31 @@
 import commune as c
 from .account import Account
 
+
 class Game(c.Module):
 
+
+    """
+    Steps
+    
+    """
+
     def __init__(self, 
-                 data  = {'x': 1, 'y': 2},
+                 params  = {'x': 1, 'y': 2, 'timeout': 10, 'fam': 'fam'},
                  description = "add two numbers template game",
-                 period = 10,
+                 max_time = 10,
                  epoch = 10000,
+                 leaderboard_path = 'leaderboard', 
+                 user=None,
                  password=None):
 
         """
         params:
-            data: dict
-                data to be used in the game
+            params: dict
+                params to be used in the game, in this case x and y are the numbers to be added, and timeout is the time in seconds before the game expires
             description: str
                 description of the game
-            period: int
+            max_time: int
                 time in seconds before the game expires
             password: str
                 password to be used in creating the account
@@ -24,102 +33,37 @@ class Game(c.Module):
                 time in seconds before the leaderboard expires
             
         """
-        
-        
-        self.account = Account(password= password or self.module_name())
-        self.data = data
-        self.period = period
+        self.account = Account(user=user, password=password)
+        self.params = params
+        self.max_time = max_time
         self.description = description
         self.epoch = epoch
-        
-    def game(self):
-        import random
+        self.leaderboard_path = leaderboard_path
+    init_game = __init__
+    def start_game(self):
         game = {
-            'data': {k: v + random.random() for k, v in self.data.items()}, 
+            'params': self.params, 
             'time': c.time(),
         }
-        game['users']  = {'owner': self.account.create_ticket(game)}
+        game['tickets']  = {'owner': self.account.ticket(game)}
 
         return game
     
-    def check_game_period(self, game):
-        current_period = c.time() - game['time']
-        assert current_period < self.period, 'Game expired'
-        return {'msg': 'game is not stale'}
-        
-    
-    def resolve_game(self, game=None):
-        game = game or self.game()
-        self.check_game_period(game)
-        game_data = game.copy()
-        game_data.pop('output')
-        users = c.dict2munch(game_data.pop('users'))
-        for user_names in users.keys():
-            assert self.account.verify(game_data, signature=users[user_names]['signature'], address=users[user_names]['address'])
-        game = c.dict2munch(game)
-        assert game.output != None, 'Game output not set'
-        return game
-    
 
-    def save_result(self, result):
-        address = result['address']
-        time = result['time']
-        path =  f'history/{address}/{time}.json'
-        self.put_json(path, result)
 
-    def global_history_paths(self):
-        return self.glob('history/**')
     
-    def global_history(self):
-        history = []
-        for path in self.global_history_paths():
-            history += [self.get_json(path)]
-        return history
-    
-    def clear_history(self):
+    def refresh(self):
         return [self.rm(path) for path in self.global_history_paths()]
-
-    def get_history(self, address=None, model=None):
-        history_paths = self.get_history_paths(address=address, model=model)
-        history = [self.get_json(fp) for fp in history_paths]
-        return history
-    
-    def get_history_paths(self, address=None, model=None):
-        address = address or self.key.ss58_address
-        history_paths = []
-        model_paths = [self.resolve_path(f'history/{model}')] if model else self.ls('history')
-        for model_path in model_paths:
-            user_folder = f'{model_path}/{address}'
-            if not self.exists(user_folder):
-                continue
-            for fp in self.ls(user_folder):
-                history_paths += [fp]
-        return history_paths
 
     def metadata(self):
         return {
-            'data': self.data(),
+            'params': self.params(),
             'description': self.description
         }
-    
-    def play(self, password='fam', game=None, role='player'):
-        player = Account(password=password)
-        game = game or self.game()
-        users = game.pop('users')
-        users[role] = player.create_ticket(game)
-        game['output'] = self.forward(game)
-        game['users'] = users
-        game = self.score_game(game)
-        return c.munch2dict(game)
-    
-    def play_n(self, n=1, password='fam', role='player'):
-        games = []
-        for i in range(n):
-            games += [self.play(password=password + str(i), role=role)]
-        return games
 
     def create_game_path(self, game):
-        path = self.resolve_path( 'leaderboard/'+ game['users']['player']['address'] + '/' + str(game['time']) + '.json')
+        path = self.leaderboard_path + '/' +  game['tickets']['user']['address'] + '/' + str(game['time']) + '.json'
+        path = self.resolve_path(path)
         return path
     
     def path2time(self, path):
@@ -162,20 +106,57 @@ class Game(c.Module):
         if len(leaderboard) == 0:
             return leaderboard
         return df[columns]
+    
+    
+    def submit_game(self, game):
+        game = game or self.start_game()
+        current_max_time = c.time() - game['time']
+        assert current_max_time < self.max_time, 'Game expired'
+        game_data = game.copy()
+        tickets = game_data.pop('tickets')
+        # veruft the user and owner signatures
+        assert c.verify(game_data, signature=tickets['user']['signature'], address=tickets['user']['address'])
+        game_data.pop('output', None)
 
+        # verify the owner signature
+        assert c.verify(game_data, **tickets['owner'])
 
-    def score_game(self, game):
-        game = self.resolve_game(game)
+        # add the score to the game
         game['score'] = self.score(game)
+        game_period = c.time() - game['time']
+        assert game_period < self.max_time, 'Game expired'
+
+        new_owner_ticket = self.account.ticket(game)
+        game['tickets']['owner'] = new_owner_ticket
+        # create a ticket 
         path = self.create_game_path(game)
         self.put_json(path, game)
-        
         return game
         
     def score(self,  game):
-         return abs((game.data.x + game.data.y) - game.output)
-
+        params = game['params']
+        return abs((params['x'] + params['y']) - game['output'])
         
-    def forward(self, game):
-        return  game['data']['x'] + game['data']['y'] + 1
+    def play_game(self, game):
+        params = game['params']
+        game['output'] =   params['x'] + params['y'] + 1
+        return game
+    forward = play_game
     
+    def test(self, n=10):
+        return self.play_n(n)
+    
+    def play(self, user='fam', password='fam', game=None):
+        # start the game
+        game = self.start_game()
+        game = self.play_game(game)
+        player = Account(user=user, password=password)
+        game['tickets']['user'] =  player.ticket(game)
+        return self.submit_game(game)
+    
+    def play_n(self, n=1, password='fam'):
+        games = []
+        for i in range(n):
+            key_password = password + str(i)
+            games += [self.play(key_password)]
+        return games

@@ -2,6 +2,8 @@
 FROM ubuntu:22.04
 FROM python:3.12.3-bullseye
 
+ENV PWD /app
+
 #SYSTEM
 ARG DEBIAN_FRONTEND=noninteractive
 RUN usermod -s /bin/bash root
@@ -13,15 +15,10 @@ RUN apt-get install curl nano build-essential cargo libstd-rust-dev -y
 #JS 
 RUN apt-get install -y nodejs npm
 RUN npm install -g pm2 
-ENV PWD /app
 WORKDIR /app
-
-# WANT TO HAVE TO REBUILD THE WHOLE IMAGE EVERY TIME WE CHANGE THE REQUIREMENTS
-COPY ./requirements.txt /app/requirements.txt
-COPY ./setup.py /app/setup.py
-COPY ./README.md /app/README.md
-
-RUN pip install -e ./ 
+# COPY THE SCRIPTS
+COPY ./scripts /app/scripts
+RUN chmod +x /app/scripts/install.sh
 # THIS IS FOR THE LOCAL PACKAG
 COPY ./ /app
 # git install commune
