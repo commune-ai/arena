@@ -1,16 +1,18 @@
 ORG_NAME=commune-ai
 REPO_NAME=commune
 GIT_URL=https://github.com/$ORG_NAME/$REPO_NAME.git
-REPO_PATH= $HOME/$REPO_NAME
+REPO_PATH="/root/$REPO_NAME"
+REPO_EXIST=$(ls -l $REPO_PATH/.git | wc -l)
+
 # if the repo path does not exist, clone it
-if [! -d $REPO_PATH ]; then
+if [ $REPO_EXIST -eq 0 ]; then
     echo "COULD NOT FIND COMMUNE in ${REPO_PATH}, CLONING REPO $REPO_NAME"
-    git clone $GIT_URL $REPO_PATH
-    pip install -r $REPO_PATH
+    # only clone the main branch and avoid the entire history
+    git clone $GIT_URL $REPO_PATH --depth 1
+    python3 -m pip install -e $REPO_PATH --break-system-packages
 fi
-echo "COMMUNE IS INSTALLED"
-# cd $REPO_PATH
-# pip install -r requirements.txt
+# does REPO EXIST
+echo "COMMUNE IS $REPO_PATH $REPO_EXIST"
+# # cd $REPO_PATH
 python3 -m pip install -e ./ --break-system-packages
 
-# pip install -e ./

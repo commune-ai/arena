@@ -17,8 +17,7 @@ class Game(c.Module):
                  epoch = 10000,
                  leaderboard_path = 'leaderboard', 
                  user=None,
-                 password=None):
-
+                 password=None, **extra_params):
         """
         params:
             params: dict
@@ -33,21 +32,38 @@ class Game(c.Module):
                 time in seconds before the leaderboard expires
             
         """
-        self.account = Account(user=user, password=password, role='owner')
-        self.params = params
         self.max_time = max_time
         self.description = description
         self.epoch = epoch
         self.leaderboard_path = leaderboard_path
+        self.set_params(**params, **extra_params)
+        self.login(user, password)
     init_game = __init__
+
+    def login(self, user, password, role='owner'):
+        self.account = Account(user=user, password=password, role='owner')
+        return self.account
+
+    def set_params(self, **params):
+        self.params = params
+    def game(self):
+        game = self.params
+        return game
+
+
     def start_game(self):
         game = {}
-        game['params'] = self.params
+        game = c.copy(self.game())
+        reserved_keys = ['signatures', 'timestamp', 'max_time', 'description', 'epoch']
+        for key in reserved_keys:
+            assert key not in game, f'key: {key} is reserved'
+        # add game metadata
         game['description'] = self.description
         game['max_time'] = self.max_time
         game['epoch'] = self.epoch
-        game = self.account.sign(game, role = 'owner')
 
+        # have the owner signit to verify it is indeed the owner
+        game = self.account.sign(game)
         return game
     
 
@@ -134,32 +150,23 @@ class Game(c.Module):
         return game
         
     def score(self,  game):
-        params = game['params']
-        return abs((params['x'] + params['y']) - game['output'])
+        return abs((game['x'] + game['y']) - game['output'])
         
-    def play_game(self, game):
-        params = game['params']
-        game['output'] =   params['x'] + params['y'] 
+    def forward(self, game, **kwargs):
+        game['output'] =  game['x'] + game['y']
         return game
-    forward = play_game
+
+    def test(self):
+        return self.play()
     
-    def test(self, n=10):
-        return self.play_n(n)
-    
-    def play(self, user='fam', password='fam', game=None):
-        # start the game
+    def play(self, user='fam', password='fam', **kwargs):
+        user = Account(user=user, password=password, role='user')
         game = self.start_game()
-        game = self.play_game(game)
-        assert self.account.verify(game), 'Ticket verification failed'
-        player = Account(user=user, password=password)
-        game =  player.sign(game, role='user')
-        assert player.verify(game), 'Ticket verification failed'
-       
-        return self.submit_game(game)
+        game.update(kwargs)
+        game = self.forward(game)
+        game =  user.sign(game)       
+        game =  self.submit_game(game)
+        game.pop('signatures', None)
+        return game
     
-    def play_n(self, n=1, password='fam'):
-        games = []
-        for i in range(n):
-            key_password = password + str(i)
-            games += [self.play(key_password)]
-        return games
+
