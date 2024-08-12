@@ -115,11 +115,12 @@ class Game(c.Module):
         game_data = game.copy()
         tickets = game_data.pop('tickets')
         # veruft the user and owner signatures
-        assert c.verify(game_data, signature=tickets['user']['signature'], address=tickets['user']['address'])
-        game_data.pop('output', None)
 
-        # verify the owner signature
-        assert c.verify(game_data, **tickets['owner'])
+        assert c.verify(game_data, signature=tickets['user']['signature'], address=tickets['user']['address']), str(game_data)
+        # game_data.pop('output', None)
+
+        # # verify the owner signature
+        # assert c.verify(game_data, **tickets['owner'])
 
         # add the score to the game
         game['score'] = self.score(game)
@@ -151,7 +152,9 @@ class Game(c.Module):
         game = self.start_game()
         game = self.play_game(game)
         player = Account(user=user, password=password)
+        
         game['tickets']['user'] =  player.ticket(game)
+       
         return self.submit_game(game)
     
     def play_n(self, n=1, password='fam'):

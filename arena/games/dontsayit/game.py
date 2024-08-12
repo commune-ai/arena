@@ -20,6 +20,7 @@ class DontSayIt(a.Game):
 
     def score(self, game):
         text = game['text']
+        
         forbidden_words = params['forbidden_words']
         return 1
 

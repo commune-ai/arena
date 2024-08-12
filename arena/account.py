@@ -18,11 +18,6 @@ class Account(c.Module):
         self.data = data
         self.key = c.pwd2key(user_seed)
         return self.key
-    
-    @classmethod
-    def new_account(cls, user='alice', password='bob', salt=None):
-        return cls(user=user, password=password, salt=salt)
-
 
     def sign(self, data, **kwargs):
         return self.key.sign( data, **kwargs)
@@ -38,17 +33,15 @@ class Account(c.Module):
     
     
     def verify_ticket(self, ticket, max_staleness=10):
-        timestamp = c.jload(ticket['data'])['timestamp']
+        tickets = ticket.pop('tickets')
+        results = []
+        timestamp = c.jload(ticket)['timestamp']
         staleness = c.timestamp() - timestamp
         assert staleness < max_staleness, f'Staleness {staleness} > {max_staleness}'
-        t0 = c.time()
-        c.verify(ticket['data'], signature=ticket['signature'], address=ticket['address'])
-        t1 = c.time()
-        print('Verification Time:', t1 - t0)
-
-        if 'data' in ticket:
-            data = c.jload(ticket['data'])
-        return data
+        for user, ticket in tickets.items():
+            result = c.verify(ticket['data'], signature=ticket['signature'], address=ticket['address'])
+            results += [result]
+        return all(results)
     
 
     def test_account(self, n=10):
@@ -72,10 +65,6 @@ class Account(c.Module):
     def public_key(self):
         return self.key.ss58_address
     
-    def address(self):
-        return self.key.ss58_address
-    
-    
     def ticket(self, data = {'a': 1}, password=None ):
 
         ticket = {
@@ -85,15 +74,16 @@ class Account(c.Module):
                 }
         if isinstance(data, dict):
             ticket['keys'] = list(data.keys())
-
-        return ticket
-    
-    
-    def add_data(self, **data):
-        self.data = data
-        return self.state_dict()
+        if not 'tickets' in data:
+            data['tickets'] = {}
+        data['tickets'][self.user] = ticket
+        return data
 
     def __repr__(self):
         return f'Account(user={self.user} key={self.key.ss58_address} data={self.data})'
     def __str__(self):
         return self.__repr__()
+    
+    @classmethod
+    def new_account(cls, user='alice', password='bob', salt=None):
+        return cls(user=user, password=password, salt=salt)
