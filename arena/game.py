@@ -33,7 +33,7 @@ class Game(c.Module):
             
         """
         self.max_time = max_time
-        self.description = description
+        self.description = description 
         self.epoch = epoch
         self.leaderboard_path = leaderboard_path
         self.set_params(**params, **extra_params)

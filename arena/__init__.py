@@ -24,6 +24,13 @@ class Arena(c.Module):
         name2path = dict(zip(names, paths))
         return name2path
     
+    def name2objectpath(self):
+        names = self.game_names()
+        paths = self.game_paths()
+        name2path = dict(zip(names, paths))
+        name2objectpath = {name: 'arena.games.'+path.replace(self.game_directory + '/', '').replace('.py', '') for name, path in name2path.items()}
+        return name2objectpath
+    
     def game_names(self, game_directory=None):
         game_paths = self.game_paths(game_directory=game_directory)
         game_names = list(map(self.get_name_from_path, game_paths))
@@ -67,5 +74,26 @@ class Arena(c.Module):
                 return True
 
         return False
+    
+    def get_game(self, name):
+        path = self.name2objectpath()[name]
+        return c.module(path)()
+    
+
+    def play(self, game='dontsayit', **kwargs):
+        game =  self.get_game(game)
+        return game.play(**kwargs)
+    
+
+    def primitives(self):
+        return [Account, Game]
+    
+    def test(self, game='dontsayit', **kwargs):
+        import arena as a
+        results = {}
+        for primitive in self.primitives():
+            primitive = primitive()
+            results[primitive.__class__.__name__] = primitive.test()
+        return results
 
 
