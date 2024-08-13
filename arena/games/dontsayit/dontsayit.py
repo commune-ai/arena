@@ -36,7 +36,7 @@ class DontSayIt(a.Game):
 
     def score(self, game):
         model = c.choice(self.models)
-        output = self.model.forward(game['text'], model=model)
+        output = self.model.forward(game['input'], model=model)
         game['output'] = output
         for word in game['forbidden_words']:
             if word in output:
@@ -44,7 +44,7 @@ class DontSayIt(a.Game):
         return 0
     
     def forward(self, game):
-        assert 'text' in game, 'Text not found'
+        assert 'input' in game, 'Text not found'
         return game
 
 

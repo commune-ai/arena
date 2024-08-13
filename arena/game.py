@@ -46,6 +46,7 @@ class Game(c.Module):
 
     def set_params(self, **params):
         self.params = params
+        
     def game(self):
         game = self.params
         return game
