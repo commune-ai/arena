@@ -1,18 +1,13 @@
-#
-
-# if commune does not exist build it
-
-# if docker is not running, start it
-
+# START THE CONTAINER
 IMAGE_NAME=arena
 IMAGE_PATH=./
 CONTAINER_NAME=$IMAGE_NAME
 SHM_SIZE=4g
 NETWORK=host
-
-# RESOLVE PORT RANGE
 START_PORT=50050
 END_PORT=50100
+DOCKER_SOCKET_PATH=/var/run/docker.sock
+
 DOES_IMAGE_EXIST=$(docker images -q $IMAGE_NAME)
 if [ ! $DOES_IMAGE_EXIST ]; then
   echo "BUILDING IMAGE $IMAGE_NAME"
@@ -34,10 +29,15 @@ fi
 CMD_STR="docker run -d \
   --name $CONTAINER_NAME \
   --shm-size $SHM_SIZE \
-  -v ~/.commune:/root/.commune \ 
+  -v ~/.commune:/root/.commune \
+  -v ~/commune:/root/commune \
   -v $PWD:/app \
   --network $NETWORK \
-  --restart unless-stopped \
-  $CONTAINER_NAME"
-
+  $IMAGE_NAME"
+echo $CMD_STR
+  # voume of docker socket
+docker exec -it $CONTAINER_NAME c ls
 eval $CMD_STR
+
+
+# RESOLVE PORT RANGE

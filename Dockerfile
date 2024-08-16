@@ -2,6 +2,7 @@
 FROM ubuntu:22.04
 FROM python:3.12.3-bullseye
 
+
 ENV PWD /app
 
 #SYSTEM
@@ -23,5 +24,6 @@ RUN chmod +x /app/scripts/install.sh
 COPY ./ /app
 # git install commune
 RUN ./scripts/install.sh
+RUN  pip install -e ./ --break-system-packages
 # IMPORT EVERYTHING ELSE
 ENTRYPOINT [ "tail", "-f", "/dev/null"]

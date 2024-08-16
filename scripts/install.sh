@@ -14,5 +14,5 @@ fi
 # does REPO EXIST
 echo "COMMUNE IS $REPO_PATH $REPO_EXIST"
 # # cd $REPO_PATH
-python3 -m pip install -e ./ --break-system-packages
+
 
